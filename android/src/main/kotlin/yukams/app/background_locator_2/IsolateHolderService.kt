@@ -144,24 +144,27 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.e("IsolateHolderService", "onStartCommand => intent.action : ${intent?.action}")
-        if(intent == null) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                Log.e("IsolateHolderService", "app has crashed, stopping it")
-                stopSelf()
-            }
-            else {
-                return super.onStartCommand(intent, flags, startId)
-            }
+        Log.e("IsolateHolderService", "onStartCommand => Intent: $intent, Action: ${intent?.action}")
+
+        if (intent == null || intent.action == null) {
+            Log.e("IsolateHolderService", "Intent is null or action is missing, stopping service.")
+            stopSelf()
+            return START_NOT_STICKY
         }
 
-        when {
-            ACTION_SHUTDOWN == intent?.action -> {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
+            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Log.e("IsolateHolderService", "Missing location permissions, stopping service.")
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        when (intent.action) {
+            ACTION_SHUTDOWN -> {
                 isServiceRunning = false
                 shutdownHolderService()
             }
-            ACTION_START == intent?.action -> {
+            ACTION_START -> {
                 if (isServiceRunning) {
                     isServiceRunning = false
                     shutdownHolderService()
@@ -172,15 +175,20 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
                     startHolderService(intent)
                 }
             }
-            ACTION_UPDATE_NOTIFICATION == intent?.action -> {
+            ACTION_UPDATE_NOTIFICATION -> {
                 if (isServiceRunning) {
                     updateNotification(intent)
                 }
+            }
+            else -> {
+                Log.e("IsolateHolderService", "Unknown action: ${intent.action}, stopping service.")
+                stopSelf()
             }
         }
 
         return START_STICKY
     }
+
 
     private fun startHolderService(intent: Intent) {
         Log.e("IsolateHolderService", "startHolderService")

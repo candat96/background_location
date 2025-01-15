@@ -103,14 +103,17 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
 
     private fun getNotification(): Notification {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Notification channel is available in Android O and up
-            val channel = NotificationChannel(
-                Keys.CHANNEL_ID, notificationChannelName,
-                NotificationManager.IMPORTANCE_LOW
-            )
+            val channelId = Keys.CHANNEL_ID
+            val channelName = notificationChannelName.takeIf { it.isNotEmpty() } ?: "Default Channel"
+            val importance = NotificationManager.IMPORTANCE_LOW
 
-            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
-                .createNotificationChannel(channel)
+            val channel = NotificationChannel(channelId, channelName, importance)
+
+            // Check if the channel already exists
+            val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            if (notificationManager.getNotificationChannel(channelId) == null) {
+                notificationManager.createNotificationChannel(channel)
+            }
         }
 
         val intent = Intent(this, getMainActivityClass(this))

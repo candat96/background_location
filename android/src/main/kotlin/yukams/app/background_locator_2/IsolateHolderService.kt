@@ -96,7 +96,7 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
     private fun getNotification(): Notification {
         // Create a notification channel for Android O and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channelId = Keys.CHANNEL_ID
+            val channelId = 'Keys.CHANNEL_ID'
             val channelName = notificationChannelName.takeIf { it.isNotEmpty() } ?: "Default Channel"
             val importance = NotificationManager.IMPORTANCE_LOW
 
@@ -169,38 +169,54 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
     }
 
     private fun startHolderService(intent: Intent) {
-        Log.e("IsolateHolderService", "startHolderService")
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 1")
         notificationChannelName =
             intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_CHANNEL_NAME).toString()
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 2")
         notificationTitle =
             intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_TITLE).toString()
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 3")
         notificationMsg = intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_MSG).toString()
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 4")
         notificationBigMsg =
             intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_BIG_MSG).toString()
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 5")
 
         val iconNameDefault = "ic_launcher"
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 6")
         var iconName = intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_ICON)
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 7")
         if (iconName == null || iconName.isEmpty()) {
             iconName = iconNameDefault
         }
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 8")
         icon = resources.getIdentifier(iconName, "mipmap", packageName)
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 9")
         notificationIconColor =
             intent.getLongExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_ICON_COLOR, 0).toInt()
         wakeLockTime = intent.getIntExtra(Keys.SETTINGS_ANDROID_WAKE_LOCK_TIME, 60) * 60 * 1000L
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 10")
 
         locatorClient = context?.let { getLocationClient(it) }
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 11")
         locatorClient?.requestLocationUpdates(getLocationRequest(intent))
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 12")
 
         // Fill pluggable list
         if (intent.hasExtra(Keys.SETTINGS_INIT_PLUGGABLE)) {
+            Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 13")
             pluggables.add(InitPluggable())
+            Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 14")
         }
-
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 15")
         if (intent.hasExtra(Keys.SETTINGS_DISPOSABLE_PLUGGABLE)) {
+            Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 16")
             pluggables.add(DisposePluggable())
+            Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 17")
         }
-
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 18")
         start()
+        Log.e("IsolateHolderService", "startHolderService =====> Start ở đấy 19")
     }
 
     private fun shutdownHolderService() {

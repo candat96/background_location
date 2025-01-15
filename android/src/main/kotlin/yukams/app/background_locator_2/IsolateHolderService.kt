@@ -142,6 +142,7 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
             Log.e("IsolateHolderService", "app has crashed, stopping it")
             stopSelf()
         } else {
+            Log.e("IsolateHolderService", "LOG Ở ĐÂY 1111 ${isServiceRunning}")
             when {
                 ACTION_SHUTDOWN == intent?.action -> {
                     isServiceRunning = false
@@ -149,10 +150,12 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
                 }
                 ACTION_START == intent?.action -> {
                     if (isServiceRunning) {
+                        Log.e("IsolateHolderService", "isServiceRunning = 1")
                         isServiceRunning = false
                         shutdownHolderService()
                     }
                     if (!isServiceRunning) {
+                        Log.e("IsolateHolderService", "isServiceRunning = 0")
                         isServiceRunning = true
                         startHolderService(intent)
                     }

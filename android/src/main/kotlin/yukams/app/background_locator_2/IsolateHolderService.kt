@@ -24,40 +24,31 @@ import java.util.HashMap
 import androidx.core.app.ActivityCompat
 
 class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateListener, Service() {
+
     companion object {
         @JvmStatic
         val ACTION_SHUTDOWN = "SHUTDOWN"
-
         @JvmStatic
         val ACTION_START = "START"
-
         @JvmStatic
         val ACTION_UPDATE_NOTIFICATION = "UPDATE_NOTIFICATION"
-
         @JvmStatic
         private val WAKELOCK_TAG = "IsolateHolderService::WAKE_LOCK"
-
         @JvmStatic
         var backgroundEngine: FlutterEngine? = null
-
         @JvmStatic
         private val notificationId = 1
-
         @JvmStatic
         var isServiceRunning = false
-
         @JvmStatic
         var isServiceInitialized = false
 
         fun getBinaryMessenger(context: Context?): BinaryMessenger? {
             val messenger = backgroundEngine?.dartExecutor?.binaryMessenger
-            return messenger
-                ?: if (context != null) {
-                    backgroundEngine = FlutterEngine(context)
-                    backgroundEngine?.dartExecutor?.binaryMessenger
-                }else{
-                    messenger
-                }
+            return messenger ?: context?.let {
+                backgroundEngine = FlutterEngine(it)
+                backgroundEngine?.dartExecutor?.binaryMessenger
+            }
         }
     }
 
@@ -65,7 +56,7 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
     private var notificationTitle = "Start Location Tracking"
     private var notificationMsg = "Track location in background"
     private var notificationBigMsg =
-        "Background location is on to keep the app up-tp-date with your location. This is required for main features to work properly when the app is not running."
+        "Background location is on to keep the app up-to-date with your location. This is required for main features to work properly when the app is not running."
     private var notificationIconColor = 0
     private var icon = 0
     private var wakeLockTime = 60 * 60 * 1000L // 1 hour default wake lock time
@@ -85,6 +76,7 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
     }
 
     private fun start() {
+        // Acquire wake lock to prevent the service from being killed
         (getSystemService(Context.POWER_SERVICE) as PowerManager).run {
             newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG).apply {
                 setReferenceCounted(false)
@@ -92,7 +84,7 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
             }
         }
 
-        // Starting Service as foreground with a notification prevent service from closing
+        // Start the service as a foreground service with a notification
         val notification = getNotification()
         startForeground(notificationId, notification)
 
@@ -102,6 +94,7 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
     }
 
     private fun getNotification(): Notification {
+        // Create a notification channel for Android O and above
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channelId = Keys.CHANNEL_ID
             val channelName = notificationChannelName.takeIf { it.isNotEmpty() } ?: "Default Channel"
@@ -135,43 +128,39 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
             .setColor(notificationIconColor)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingIntent)
-            .setOnlyAlertOnce(true) // so when data is updated don't make sound and alert in android 8.0+
+            .setOnlyAlertOnce(true) // so when data is updated, don't make sound and alert in Android 8.0+
             .setOngoing(true)
             .build()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.e("IsolateHolderService", "onStartCommand => intent.action : ${intent?.action}")
-        if(intent == null) {
-            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
-                || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-                Log.e("IsolateHolderService", "app has crashed, stopping it")
-                stopSelf()
-            }
-            else {
-                return super.onStartCommand(intent, flags, startId)
-            }
-        }
 
-        when {
-            ACTION_SHUTDOWN == intent?.action -> {
-                isServiceRunning = false
-                shutdownHolderService()
-            }
-            ACTION_START == intent?.action -> {
-                if (isServiceRunning) {
+        // Check if location permissions are granted
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+            || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Log.e("IsolateHolderService", "app has crashed, stopping it")
+            stopSelf()
+        } else {
+            when {
+                ACTION_SHUTDOWN == intent?.action -> {
                     isServiceRunning = false
                     shutdownHolderService()
                 }
-
-                if (!isServiceRunning) {
-                    isServiceRunning = true
-                    startHolderService(intent)
+                ACTION_START == intent?.action -> {
+                    if (isServiceRunning) {
+                        isServiceRunning = false
+                        shutdownHolderService()
+                    }
+                    if (!isServiceRunning) {
+                        isServiceRunning = true
+                        startHolderService(intent)
+                    }
                 }
-            }
-            ACTION_UPDATE_NOTIFICATION == intent?.action -> {
-                if (isServiceRunning) {
-                    updateNotification(intent)
+                ACTION_UPDATE_NOTIFICATION == intent?.action -> {
+                    if (isServiceRunning) {
+                        updateNotification(intent)
+                    }
                 }
             }
         }
@@ -188,6 +177,7 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
         notificationMsg = intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_MSG).toString()
         notificationBigMsg =
             intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_BIG_MSG).toString()
+
         val iconNameDefault = "ic_launcher"
         var iconName = intent.getStringExtra(Keys.SETTINGS_ANDROID_NOTIFICATION_ICON)
         if (iconName == null || iconName.isEmpty()) {
@@ -276,79 +266,8 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
                 }
                 else -> result.notImplemented()
             }
-
-            result.success(null)
         } catch (e: Exception) {
-
-        }
-    }
-
-    override fun onDestroy() {
-        isServiceRunning = false
-        super.onDestroy()
-    }
-
-
-    private fun getLocationClient(context: Context): BLLocationProvider {
-        return when (PreferencesManager.getLocationClient(context)) {
-            LocationClient.Google -> GoogleLocationProviderClient(context, this)
-            LocationClient.Android -> AndroidLocationProviderClient(context, this)
-        }
-    }
-
-    override fun onLocationUpdated(location: HashMap<Any, Any>?) {
-        try {
-            context?.let {
-                FlutterInjector.instance().flutterLoader().ensureInitializationComplete(
-                    it, null
-                )
-            }
-
-            //https://github.com/flutter/plugins/pull/1641
-            //https://github.com/flutter/flutter/issues/36059
-            //https://github.com/flutter/plugins/pull/1641/commits/4358fbba3327f1fa75bc40df503ca5341fdbb77d
-            // new version of flutter can not invoke method from background thread
-            if (location != null) {
-                val callback =
-                    context?.let {
-                        PreferencesManager.getCallbackHandle(
-                            it,
-                            Keys.CALLBACK_HANDLE_KEY
-                        )
-                    } as Long
-
-                val result: HashMap<Any, Any> =
-                    hashMapOf(
-                        Keys.ARG_CALLBACK to callback,
-                        Keys.ARG_LOCATION to location
-                    )
-
-                sendLocationEvent(result)
-            }
-        } catch (e: Exception) {
-
-        }
-    }
-
-    private fun sendLocationEvent(result: HashMap<Any, Any>) {
-        //https://github.com/flutter/plugins/pull/1641
-        //https://github.com/flutter/flutter/issues/36059
-        //https://github.com/flutter/plugins/pull/1641/commits/4358fbba3327f1fa75bc40df503ca5341fdbb77d
-        // new version of flutter can not invoke method from background thread
-
-        if (backgroundEngine != null) {
-            context?.let {
-                val backgroundChannel =
-                    MethodChannel(
-                        getBinaryMessenger(it)!!,
-                        Keys.BACKGROUND_CHANNEL_ID
-                    )
-                Handler(it.mainLooper)
-                    .post {
-                        Log.d("plugin", "sendLocationEvent $result")
-                        backgroundChannel.invokeMethod(Keys.BCM_SEND_LOCATION, result)
-                    }
-            }
+            Log.e("IsolateHolderService", e.toString())
         }
     }
 }

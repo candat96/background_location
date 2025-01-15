@@ -134,7 +134,7 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.e("IsolateHolderService", "onStartCommand => intent.action : ${intent?.action}")
+        Log.e("IsolateHolderService", "onStartCommand => intent.action11111 : ${intent?.action}")
 
         // Check if location permissions are granted
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED

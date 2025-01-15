@@ -102,69 +102,60 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
     }
 
     private fun getNotification(): Notification {
-        private fun getNotification(): Notification {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                // Đảm bảo tên channel hợp lệ và không chứa ký tự đặc biệt
-                val channelName = "Location Tracking"
-                val channelDescription = "Channel used for location tracking notifications"
-
-                val channel = NotificationChannel(
-                    NOTIFICATION_CHANNEL_ID,
-                    channelName,
-                    NotificationManager.IMPORTANCE_LOW
-                ).apply {
-                    description = channelDescription
-                    enableLights(false)
-                    enableVibration(true)
-                    lightColor = Color.RED
-                    vibrationPattern = longArrayOf(0, 1000, 500, 1000) // Vibration pattern
-                }
-
-                // Kiểm tra trước khi tạo NotificationChannel
-                val notificationManager = getSystemService(NotificationManager::class.java)
-                notificationManager?.createNotificationChannel(channel)
-            }
-
-            val pendingIntent: PendingIntent = PendingIntent.getActivity(
-                this,
-                0,
-                Intent(this, MainActivity::class.java),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Notification channel is available in Android O and up
+            val channel = NotificationChannel(
+                Keys.CHANNEL_ID, notificationChannelName,
+                NotificationManager.IMPORTANCE_LOW
             )
 
-            return NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
-                .setContentTitle(notificationTitle)
-                .setContentText(notificationMsg)
-                .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-                .setContentIntent(pendingIntent)
-                .setOngoing(true)
-                .build()
+            (getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
+                .createNotificationChannel(channel)
         }
 
+        val intent = Intent(this, getMainActivityClass(this))
+        intent.action = Keys.NOTIFICATION_ACTION
+
+        val pendingIntent: PendingIntent = PendingIntent.getActivity(
+            this,
+            1, intent, PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        return NotificationCompat.Builder(this, Keys.CHANNEL_ID)
+            .setContentTitle(notificationTitle)
+            .setContentText(notificationMsg)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText(notificationBigMsg)
+            )
+            .setSmallIcon(icon)
+            .setColor(notificationIconColor)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingIntent)
+            .setOnlyAlertOnce(true) // so when data is updated don't make sound and alert in android 8.0+
+            .setOngoing(true)
+            .build()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.e("IsolateHolderService", "onStartCommand => Intent: $intent, Action: ${intent?.action}")
-
-        if (intent == null || intent.action == null) {
-            Log.e("IsolateHolderService", "Intent is null or action is missing, stopping service.")
-            stopSelf()
-            return START_NOT_STICKY
+        Log.e("IsolateHolderService", "onStartCommand => intent.action : ${intent?.action}")
+        if(intent == null) {
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                || ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                Log.e("IsolateHolderService", "app has crashed, stopping it")
+                stopSelf()
+            }
+            else {
+                return super.onStartCommand(intent, flags, startId)
+            }
         }
 
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED ||
-            ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Log.e("IsolateHolderService", "Missing location permissions, stopping service.")
-            stopSelf()
-            return START_NOT_STICKY
-        }
-
-        when (intent.action) {
-            ACTION_SHUTDOWN -> {
+        when {
+            ACTION_SHUTDOWN == intent?.action -> {
                 isServiceRunning = false
                 shutdownHolderService()
             }
-            ACTION_START -> {
+            ACTION_START == intent?.action -> {
                 if (isServiceRunning) {
                     isServiceRunning = false
                     shutdownHolderService()
@@ -175,20 +166,15 @@ class IsolateHolderService : MethodChannel.MethodCallHandler, LocationUpdateList
                     startHolderService(intent)
                 }
             }
-            ACTION_UPDATE_NOTIFICATION -> {
+            ACTION_UPDATE_NOTIFICATION == intent?.action -> {
                 if (isServiceRunning) {
                     updateNotification(intent)
                 }
-            }
-            else -> {
-                Log.e("IsolateHolderService", "Unknown action: ${intent.action}, stopping service.")
-                stopSelf()
             }
         }
 
         return START_STICKY
     }
-
 
     private fun startHolderService(intent: Intent) {
         Log.e("IsolateHolderService", "startHolderService")

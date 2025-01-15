@@ -90,7 +90,7 @@ class BackgroundLocatorPlugin
             }
 
             startIsolateService(context, settings)
-
+            
             // We need to know when the service binded exactly, there is some delay between starting a
             // service and it's binding
             // HELP WANTED: I couldn't find a better way to handle this, so any help or suggestion would be appreciated
@@ -278,7 +278,7 @@ class BackgroundLocatorPlugin
     }
 
     override fun onNewIntent(intent: Intent): Boolean {
-        if (intent.action != Keys.NOTIFICATION_ACTION) {
+        if (intent?.action != Keys.NOTIFICATION_ACTION) {
             // this is not our notification
             return false
         }
